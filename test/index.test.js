@@ -21,6 +21,10 @@ test('anchors is a function with the API as properties', () => {
   }
 })
 
+test('anchors() rejects non-anchorable geometry', () => {
+  assert.throws(() => anchors(jscad.geometries.path2.create()), /anchors: geometry must be geom2 or geom3/)
+})
+
 test('a bolt placed through a carried hole lines up', () => {
   const plate = transforms.translate([3, 4, 0], primitives.cuboid({ size: [20, 20, 2] }))
   const cutter = transforms.translate([5, 0, 0], anchors.withAnchors(

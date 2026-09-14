@@ -1,4 +1,5 @@
 import type { Geom2, Geom3 } from '@jscad/modeling/src/geometries/types'
+import type * as modelingBooleans from '@jscad/modeling/src/operations/booleans'
 
 export * from '@jscad/modeling'
 
@@ -33,10 +34,18 @@ export interface AnchorsApi {
   unionAnchored<T extends Anchorable>(...geometries: Operands<T>): T
   subtractAnchored<T extends Anchorable>(...args: Array<T | T[] | SubtractOptions>): T
   intersectAnchored<T extends Anchorable>(...geometries: Operands<T>): T
-  anchorArrows(geometry: Anchorable, options?: ArrowOptions): Geom3[]
+  anchorArrows(geometry: Anchorable, options?: ArrowOptions): Array<Geom3 & { name: string }>
   fromBosl2(anchor: Bosl2Anchor): [string, Frame]
   fromConnector(connector: Connector): Frame
   toConnector(frame: Frame): Connector
 }
 
 export declare const anchors: AnchorsApi
+
+export declare const booleans: {
+  union: AnchorsApi['unionAnchored']
+  subtract: AnchorsApi['subtractAnchored']
+  intersect: AnchorsApi['intersectAnchored']
+  scission: typeof modelingBooleans.scission
+  minkowski: typeof modelingBooleans.minkowski
+}

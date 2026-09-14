@@ -3,7 +3,10 @@ const { canonicalName, parseDirection } = require('./names')
 const { isAnchorable, worldFrames } = require('./storage')
 const { defaultFrame } = require('./defaults')
 
-const anchors = (geometry) => worldFrames(geometry)
+const anchors = (geometry) => {
+  if (!isAnchorable(geometry)) throw new Error('anchors: geometry must be geom2 or geom3')
+  return worldFrames(geometry)
+}
 
 const anchor = (geometry, nameOrVector) => {
   if (!isAnchorable(geometry)) throw new Error('anchor: geometry must be geom2 or geom3')

@@ -72,8 +72,9 @@ vector, in world space:
    that direction is computed (see below).
 3. Otherwise it throws `anchor: unknown anchor "<name>"`.
 
-Both `anchors()` and `anchors.anchor()` throw `anchor: geometry must be geom2
-or geom3` for anything else, and both convert local frames to world space by
+For anything else, `anchors()` throws `anchors: geometry must be geom2 or
+geom3` and `anchors.anchor()` throws `anchor: geometry must be geom2 or
+geom3`. Both convert local frames to world space by
 composing them with the geometry's current `transforms` matrix.
 
 ## Default anchors

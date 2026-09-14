@@ -1,17 +1,17 @@
 'use strict'
 const modeling = require('./wrap')
 const { frame } = require('./frame')
-const { withAnchors, worldFrames } = require('./storage')
-const { anchor } = require('./lookup')
+const { withAnchors } = require('./storage')
+const lookup = require('./lookup')
 const { unionAnchored, subtractAnchored, intersectAnchored } = require('./booleans')
 const { attach, alignTo } = require('./place')
 const { anchorArrows } = require('./debug')
 const { fromBosl2, fromConnector, toConnector } = require('./convert')
 
-const anchors = Object.assign((geometry) => worldFrames(geometry), {
+const anchors = Object.assign((geometry) => lookup.anchors(geometry), {
   frame,
   withAnchors,
-  anchor,
+  anchor: lookup.anchor,
   attach,
   alignTo,
   unionAnchored,

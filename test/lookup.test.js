@@ -17,6 +17,11 @@ test('anchors returns explicit world frames only', () => {
   close(anchors(g).p.origin, [5, 0, 0])
 })
 
+test('anchors rejects path2 and undefined', () => {
+  assert.throws(() => anchors(raw.geometries.path2.create()), /anchors: geometry must be geom2 or geom3/)
+  assert.throws(() => anchors(undefined), /anchors: geometry must be geom2 or geom3/)
+})
+
 test('anchor prefers explicit frames over defaults', () => {
   const g = withAnchors(cuboid(), { top: f0 })
   frameClose(anchor(g, 'top'), f0)
