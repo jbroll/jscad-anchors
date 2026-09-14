@@ -7,26 +7,39 @@
 - `@jscad/modeling` `>=2.12.0 <3` as a peer dependency. This package does not
   install its own copy; the consumer's `@jscad/modeling` is used.
 
+The group table in `src/wrap/groups.js` was verified against modeling
+`fork-main` 2.13.4. To check another installed version, run
+`npm run exports:check`.
+
 ## Consumer setup
 
 ```
 npm install @jbroll/jscad-anchors
 ```
 
-Because several other packages in this ecosystem (jscad-fluent, the jscadui
-transpiler, jscad-ai-studio) also depend on `@jscad/modeling`, a consumer
-that uses more than one of them should force npm to install a single copy,
-so `geometry.transforms`, `geometry.anchors`, and the identity checks this
-package relies on are all comparing against the same module instance. Add an
-`overrides` entry to the consuming project's `package.json`:
+jscadui, jscad-fluent, and jscad-ai-studio use one modeling package:
+`packages/modeling` on the `fork-main` branch of
+[jbroll/OpenJSCAD.org](https://github.com/jbroll/OpenJSCAD.org), published as
+`@jbroll/jscad-modeling`. Consumers link it from a sibling checkout
+(`../OpenJSCAD.org/packages/modeling`) and add npm `overrides` so transitive
+`@jscad/*` dependencies, including this package's peer, resolve to the same
+copy. Two copies would break the `polygons`/`sides` identity checks this
+package relies on.
 
 ```json
 {
+  "dependencies": {
+    "@jbroll/jscad-anchors": "file:../jscad-anchors",
+    "@jscad/modeling": "file:../OpenJSCAD.org/packages/modeling"
+  },
   "overrides": {
-    "@jscad/modeling": "<the resolved version>"
+    "@jscad/modeling": "$@jscad/modeling"
   }
 }
 ```
+
+`$@jscad/modeling` makes every nested `@jscad/modeling` use the root
+dependency's spec.
 
 ## Local development
 

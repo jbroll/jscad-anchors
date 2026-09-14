@@ -2,9 +2,10 @@
 
 Named frames (anchors) on JSCAD geometry, so parts are placed by attaching one
 part's frame to another's instead of by hand-computed `translate`/`rotate`
-numbers. For native [`@jscad/modeling`](https://github.com/jscad/OpenJSCAD.org)
-models, [jscad-fluent](https://github.com/jbroll/jscad-fluent), and the
-OpenSCAD transpiler in [jscadui](https://github.com/jbroll/jscadui).
+numbers. Works with native [`@jscad/modeling`](https://github.com/jscad/OpenJSCAD.org)
+models, and is intended for [jscad-fluent](https://github.com/jbroll/jscad-fluent)
+and the OpenSCAD transpiler in [jscadui](https://github.com/jbroll/jscadui),
+neither of which is integrated yet.
 
 Version 0.1.0.
 

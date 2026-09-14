@@ -89,8 +89,8 @@ declaration, computed from its bounding box:
 - The bounding box is measured after the geometry's transforms, so default
   anchors need no storage and cannot fall out of sync.
 
-`x` (and so `y`) on a default anchor follows a fixed orientation rule so
-default frames are consistent and predictable: on the four side faces
+`x` (and so `y`) on a default anchor follows a fixed orientation rule: on the
+four side faces
 (`left`, `right`, `front`, `back`) `y` points up (world `+z`); on `top` and
 `bottom` `y` points back (world `+y`). Edges and corners extend this
 smoothly from the faces that meet there. This is BOSL2's cuboid spin-0
@@ -262,7 +262,7 @@ face that a non-uniform scale leaves non-perpendicular to its own surface is
 *not* recomputed to stay a true normal — it is the old direction, scaled and
 renormalized, which can point off the actual face.
 
-Also note: on this fork, `transforms.scale` throws `factors must be
+On this fork, `transforms.scale` throws `factors must be
 positive` for any factor `<= 0`. Negative scaling and mirroring go through
 `transforms.transform(mat4.fromScaling(mat4.create(), factors), geometry)`
 or `transforms.mirror`/`mirrorX/Y/Z`, both of which this package's wrapper

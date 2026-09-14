@@ -24,7 +24,7 @@ themselves (`storage.bake`/`bakeAll`), so they need no wrapper. `place` and
 `index` import the wrapped modeling from `src/wrap` for calls that operate on
 the *caller's* anchored geometry (`transform`, `translate`, measurements), so
 those stay bake-safe automatically rather than calling `bake` by hand.
-`debug` is the one exception worth noting: it builds arrow shapes from raw
+`debug` is the exception: it builds arrow shapes from raw
 `primitives`/`booleans`/`transforms`, since an arrow is always fresh,
 unanchored geometry with no frames of its own to protect; it reads the
 *source* geometry's frames through `storage`/`defaults`, which already bake
@@ -43,6 +43,26 @@ Frames through `hull`, extrusions, `expand`, and `offset` are also out of
 scope for now, but unlike the items above have a path forward; see
 `docs/backlog.md`.
 
+Named parts (BOSL2 `define_part`) are expressed as arrays of anchored
+geometry or as prefixed frames (`bolt1.axis`). There is no separate part
+type in the first version.
+
+## Prior art
+
+| System | Anchor | Moves with part | Through booleans |
+|---|---|---|---|
+| BOSL2 | `[name, pos, orient, spin]`, direction anchors on an `attach_geom` description | only during the call, via `$parent_*` | not applicable |
+| JSCAD v1 connectors | `{ point, axis, normal }` | yes | merged, existing key wins |
+| build123d joints | `Location` relative to the part | yes | dropped |
+| Onshape mate connectors, FreeCAD LCS, STEP `AXIS2_PLACEMENT_3D`, URDF | origin, Z axis, X reference, name | yes | not applicable |
+
+Every system that works without face selection stores a named rigid frame,
+and the mature ones converge on origin plus Z plus an X reference. BOSL2's
+`$parent_*` variables, `attachable()`, and multi-pass `diff()` exist because
+OpenSCAD geometry cannot be queried after it is built. This package keeps
+BOSL2's frames, direction anchors, attach with overlap and spin, align,
+named parts, and a debug view, and drops the call-time machinery.
+
 ## Storage and the basis check
 
 Frames are stored on the geometry object, in the same coordinate space as
@@ -53,7 +73,7 @@ geometry.anchors = { frames: { [name]: frame }, basis: basisOf(geometry) }
 ```
 
 `basisOf` returns `polygons` for geom3 and `sides` for geom2. All anchors
-code reads through it, never through the field names directly, so the geom3
+code reads through it, never through the field names directly, so the geom2
 v3 rename to `outlines` is a one-line change (see "JSCAD v3" below).
 
 `@jscad/modeling` bakes several kinds of geometry in place: `applyTransforms`
@@ -193,6 +213,13 @@ rule: on a name clash, the existing key wins. `subtractAnchored` and
 `subtractAnchored`'s `carry` option explicitly adds — no clash rule is
 needed there since nothing but the carried, prefixed names can collide.
 
+## API names
+
+Names avoid v3's flat exports `union`, `subtract`, `intersect`, and `align`,
+so modeling can re-export this package's functions later without a clash.
+That is why the API uses `unionAnchored`, `subtractAnchored`,
+`intersectAnchored`, and `alignTo`.
+
 ## `attach` math
 
 `attach` computes `M = P · T(0, 0, -overlap) · Ry(π if flip) · Rz(spin) ·
@@ -211,8 +238,7 @@ understand and explain this" comment at line 42.
 
 ## Consumers
 
-Full detail for each of these lives in `docs/backlog.md`; this is the shape
-of the integration.
+Full detail for each lives in `docs/backlog.md`.
 
 - **jscad-fluent**: its fluent wrapper already copies every field
   (`Object.assign(this, geometry)`) and every transform method re-wraps the
@@ -246,9 +272,13 @@ operations returning new geometry. What changes on the move: geom2 stores
 `outlines` instead of `sides` (only `basisOf` changes); `geom2/reverse`
 keeps only `color` on v3, so a raw geom2 mirror always drops `anchors` there
 — the wrapper's mirror handling covers it regardless; the group table is
-regenerated from v3's flat exports; v3's `measureBoundingBox` caches per
-object in a `WeakMap`, so default anchors must not read a stale box after an
-in-place bake (a backlog item for the v3 port, see `docs/backlog.md`).
+regenerated from v3's flat exports.
+
+`measureBoundingBox` caches per object in a `WeakMap`, on v2 `fork-main`
+(`measurements/measureBoundingBox.js:11`) as well as v3. This was checked and
+cannot give default anchors a stale box: an in-place bake leaves the object's
+world geometry unchanged, so a cached box stays right, and a lazy transform
+returns a new object, which has no cache entry.
 
 ## Where the package lives
 

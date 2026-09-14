@@ -60,7 +60,9 @@ lookup — eager resolution may cost too much in large BOSL2 models.
 instead compares them against BOSL2's own `_find_anchor` results, evaluated
 through the jscadui transpiler, for cuboid, cylinder, and sphere
 attachables — no OpenSCAD binary needed, but needs jscadui, so it can't live
-in this repository until the transpiler work above lands.
+in this repository until the transpiler work above lands. The same test
+should compare `attach` results against BOSL2's `_attach_transform`
+(attachments.scad:3200), not only frames against `_find_anchor`.
 
 ## jscad-ai-studio
 
@@ -102,12 +104,6 @@ or neither) a frame lands on — open question, not decided.
   table should be checked against the flat surface too).
 - ESM throughout; `require`-based module boundaries in `wrap/index.js` need
   to become imports.
-- v3's `measureBoundingBox` caches per object in a `WeakMap`
-  (`measureBoundingBox.js:13,49-60`); default anchors must not read a stale
-  box after an in-place bake — needs a test, since the current
-  bounding-box-cache test (`test/lookup.test.js`, "defaults after an
-  in-place bake match a freshly measured box") measures only after baking,
-  not before, so it wouldn't catch a stale v3 cache read before the bake.
 - About 8 known v3 call sites to update outside this repo: jscad-fluent's
   `minkowski` namespace and its `expansions` deep type import, the OpenSCAD
   runtime's `slice.fromSides` and `booleans.minkowski`, and
@@ -148,9 +144,12 @@ Known gaps, not yet covered:
   tested.
 - `attach` with degenerate child frames isn't tested.
 - `anchorArrows` with a geom2 input isn't tested.
-- The bounding-box cache test (`test/lookup.test.js`) checks default anchors
-  match a fresh measurement only *after* baking, not before — see "JSCAD v3
-  port" above.
+- `subtractAnchored` with a `carry` tool that is not among the boolean's
+  operands isn't tested.
+- The chain test (`test/chain.test.js`) compares frames against frames
+  computed through the same `transformFrame` and path2-probe code the
+  wrapper uses. It should also put a frame origin on a vertex and compare it
+  with `toPoints` after the chain.
 - Nothing tests that a new geometry-taking export landing under a `none`
   `PREFIXES` entry (rather than missing from the table entirely) would be
   caught if it actually needed a different group; `test/groups.test.js`
