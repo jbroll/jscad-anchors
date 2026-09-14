@@ -23,4 +23,14 @@ const anchors = Object.assign((geometry) => lookup.anchors(geometry), {
   toConnector
 })
 
-module.exports = Object.assign({}, modeling, { anchors })
+const {
+  colors, curves, geometries, maths, measurements, primitives, text, utils,
+  booleans, expansions, extrusions, hulls, minkowski, modifiers, transforms
+} = modeling
+
+// An object literal of identifiers lets Node's ESM loader detect named exports.
+module.exports = {
+  colors, curves, geometries, maths, measurements, primitives, text, utils,
+  booleans, expansions, extrusions, hulls, minkowski, modifiers, transforms,
+  anchors
+}

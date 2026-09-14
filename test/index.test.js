@@ -14,6 +14,12 @@ test('re-exports modeling namespaces', () => {
   assert.equal(booleans.union, anchors.unionAnchored)
 })
 
+test('ESM import sees every export by name', async () => {
+  const esm = await import('../src/index.js')
+  const expected = [...Object.keys(require('@jscad/modeling')), 'anchors', 'default']
+  assert.deepEqual(Object.keys(esm).sort(), expected.sort())
+})
+
 test('anchors is a function with the API as properties', () => {
   for (const name of ['frame', 'withAnchors', 'anchor', 'attach', 'alignTo', 'unionAnchored', 'subtractAnchored',
     'intersectAnchored', 'anchorArrows', 'fromBosl2', 'fromConnector', 'toConnector']) {

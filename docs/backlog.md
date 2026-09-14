@@ -1,27 +1,5 @@
 # Backlog
 
-## jscad-fluent integration
-
-Add anchors to the fluent wrapper (`/home/john/src/jscad-fluent`):
-
-- `.withAnchors(frames)`, `.anchor(name)`, `.anchors()` — thin calls into
-  this package; the fluent constructor already copies every field
-  (`Object.assign(this, geometry)`, `src/gen/FluentGeom3.ts:33-35`) and every
-  transform method wraps the raw result (`_wrap`, lines 38-40), so `anchors`
-  rides along with no change to that machinery.
-- `.attachTo(parent, parentAnchor, childAnchor, options)`, `.alignTo(parent,
-  direction, options)`.
-- `.union`/`.subtract`/`.intersect` call `unionAnchored`, `subtractAnchored`,
-  `intersectAnchored` instead of raw `booleans` (currently
-  `src/gen/FluentGeom3.ts:124-131`); `.subtract` takes `{ carry }`.
-- geom2 and path2 fluent classes get the same, where meaningful.
-- Every generated method imports modeling namespaces from
-  `@jbroll/jscad-anchors` instead of `@jscad/modeling`, so every fluent call
-  goes through the wrapper.
-- jscad-fluent's `package.json` gets a dependency on `@jbroll/jscad-anchors`,
-  declared the way it already declares modeling: a peer range for
-  publishing, plus a `file:../jscad-anchors` link for local development.
-
 ## Transpiler (jscadui)
 
 `packages/openscad` in jscadui transpiles BOSL2's `attachable()`
