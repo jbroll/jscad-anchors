@@ -194,10 +194,15 @@ needed there since nothing but the carried, prefixed names can collide.
 
 ## `attach` math
 
-`attach` computes `M = P · T(0, 0, -overlap) · Rx(π if flip) · Rz(spin) ·
+`attach` computes `M = P · T(0, 0, -overlap) · Ry(π if flip) · Rz(spin) ·
 C⁻¹`, where `P` and `C` are the parent and child anchors' world frames as
 4x4 matrices (columns `x, y, z, origin`), and applies `M` to the child with
 `transforms.transform`. With full orthonormal frames this is closed form.
+
+The flip is `Ry(π)` because BOSL2's `_attach_transform` uses `yrot(180)`,
+which keeps `y` and so makes face contact between default anchors a pure
+translation. This supersedes the original spec's `Rx(π)`, which turned 3D
+children 180° about `z` and mirrored geom2 children.
 
 `@jscad/modeling`'s `connectors/transformationBetween.js` is not reused: it
 builds intermediate bases with `plane.fromPointsRandom` and carries a "TODO:

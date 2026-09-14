@@ -1,5 +1,6 @@
 'use strict'
 const test = require('node:test')
+const assert = require('node:assert/strict')
 const raw = require('@jscad/modeling')
 const { close, frameClose } = require('./helpers')
 const { frame } = require('../src/frame')
@@ -26,6 +27,34 @@ test('attach bottom to top stacks face to face', () => {
   close(f.z, [0, 0, -1])
 })
 
+const marked = () => withAnchors(cuboid({ size: [2, 2, 2] }), { marker: frame([1, 1, 1], [0, 0, 1], [1, 0, 0]) })
+
+test('attach bottom to top with default anchors is a pure translation', () => {
+  const f = worldFrames(attach(marked(), 'bottom', A(), 'top')).marker
+  close(f.origin, [1, 1, 7])
+  close(f.z, [0, 0, 1])
+  close(f.x, [1, 0, 0])
+})
+
+test('attach left to right with default anchors is a pure translation', () => {
+  const f = worldFrames(attach(marked(), 'left', A(), 'right')).marker
+  close(f.origin, [7, 1, 1])
+  close(f.z, [0, 0, 1])
+  close(f.x, [1, 0, 0])
+})
+
+test('attach keeps geom2 chirality on side anchors', () => {
+  const points = [[0, 0], [2, 0], [0, 3]]
+  const child = raw.primitives.polygon({ points })
+  const [cmin, cmax] = m.measurements.measureBoundingBox(child)
+  const offset = [5 - cmin[0], -(cmin[1] + cmax[1]) / 2]
+  const r = attach(child, 'left', rectangle({ size: [10, 10] }), 'right')
+  const key = ([x, y]) => `${x.toFixed(6)},${y.toFixed(6)}`
+  const actual = m.geometries.geom2.toPoints(r).map(key).sort()
+  const expected = points.map(([x, y]) => key([x + offset[0], y + offset[1]])).sort()
+  assert.deepEqual(actual, expected)
+})
+
 test('attach overlap moves the child into the parent', () => {
   close(range(attach(B(), 'bottom', A(), 'top', { overlap: 1 }), 2), [4, 8])
 })
@@ -39,7 +68,7 @@ test('attach spin rotates the child about its frame z', () => {
   const f = worldFrames(attach(child, 'f', A(), 'top', { spin: Math.PI / 2 })).f
   close(f.origin, [0, 0, 5])
   close(f.z, [0, 0, -1])
-  close(f.x, [0, -1, 0])
+  close(f.x, [0, 1, 0])
 })
 
 test('parent frame round trips through toConnector', () => {

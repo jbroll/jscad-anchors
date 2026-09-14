@@ -13,7 +13,7 @@ const attach = (child, childAnchor, parent, parentAnchor, { overlap = 0, flip = 
   const M = multiply(
     P,
     mat4.fromTranslation(mat4.create(), [0, 0, -overlap]),
-    flip ? mat4.fromXRotation(mat4.create(), Math.PI) : mat4.create(),
+    flip ? mat4.fromYRotation(mat4.create(), Math.PI) : mat4.create(),
     mat4.fromZRotation(mat4.create(), spin),
     mat4.invert(mat4.create(), C)
   )

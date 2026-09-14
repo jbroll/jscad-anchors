@@ -112,7 +112,7 @@ Returns `child`, transformed so its `childAnchor` frame sits on `parent`'s
 (as 4x4 matrices with columns `x, y, z, origin`):
 
 ```
-M = P · T(0, 0, -overlap) · Rx(π if flip) · Rz(spin) · C⁻¹
+M = P · T(0, 0, -overlap) · Ry(π if flip) · Rz(spin) · C⁻¹
 ```
 
 - `flip` (default `true`): the child's `z` axis ends up opposed to the
@@ -122,7 +122,8 @@ M = P · T(0, 0, -overlap) · Rx(π if flip) · Rz(spin) · C⁻¹
 - `overlap` (default `0`): moves the child `overlap` mm further into the
   parent, along the parent's `z`.
 - `spin` (default `0`, radians): rotates the child about its own `z` axis
-  before placement.
+  before placement. On a geom2 side anchor, `z` lies in the XY plane, so a
+  nonzero `spin` turns the shape out of plane and mirrors it.
 
 `attach` bakes the child's anchored geometry in place before transforming it
 (see "Baking" below).
