@@ -1,0 +1,20 @@
+{
+  "name": "@jbroll/jscad-anchors",
+  "version": "0.1.0",
+  "description": "Named frames (anchors) on JSCAD geometry",
+  "license": "MIT",
+  "author": "John Roll",
+  "repository": "https://github.com/jbroll/jscad-anchors",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "files": ["src"],
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "peerDependencies": {
+    "@jscad/modeling": ">=2.12.0 <3"
+  },
+  "devDependencies": {
+    "@jscad/modeling": "file:../OpenJSCAD.org/packages/modeling"
+  }
+}
