@@ -240,14 +240,12 @@ understand and explain this" comment at line 42.
 
 Full detail for each lives in `docs/backlog.md`.
 
-- **jscad-fluent** (done): its wrapper copies every field
+- **jscad-fluent**: its wrapper copies every field
   (`Object.assign(this, geometry)`) and every method re-wraps the raw
   result, so `anchors` rides along unchanged. `FluentGeom2` and `FluentGeom3`
-  have `.withAnchors`, `.anchor`, `.attachTo`, `.alignTo`, and a declared
-  `anchors` field. There is no `.anchors()` method, because the copied field
-  would shadow it. All generated methods import modeling from
-  `@jbroll/jscad-anchors`, so the booleans are the anchored ones and
-  `.subtract` takes `{ carry }`.
+  have `.withAnchors`, `.anchor`, `.attachTo`, and `.alignTo`. All generated
+  methods import modeling from `@jbroll/jscad-anchors`, so the booleans are
+  the anchored ones and `.subtract` takes `{ carry }`.
 - **Transpiler (jscadui)**: BOSL2's `attachable()` already builds a `geom`
   description, places the shape with `multmatrix`, and tracks `$parent_*`.
   A transpiler change would special-case `attachable` in module dispatch to
