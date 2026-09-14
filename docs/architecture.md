@@ -30,6 +30,19 @@ unanchored geometry with no frames of its own to protect; it reads the
 *source* geometry's frames through `storage`/`defaults`, which already bake
 as needed.
 
+## Scope
+
+- No selecting faces or edges of a mesh. JSCAD meshes have no stable faces
+  after booleans.
+- No constraint solver, and no relational constraints (parallel, distance,
+  angle) or assemblies with loops.
+- No joint types or motion (revolute, slider). A frame can later carry a
+  joint type and range without changing the model.
+
+Frames through `hull`, extrusions, `expand`, and `offset` are also out of
+scope for now, but unlike the items above have a path forward; see
+`docs/backlog.md`.
+
 ## Storage and the basis check
 
 Frames are stored on the geometry object, in the same coordinate space as
@@ -130,6 +143,23 @@ sit in the `matrix` group alongside `mirror*` and `transform`, rather than
 `lazy`: any of them can trigger `reverse` for a geom2 input, and the wrapper
 needs to re-attach frames (transformed, and re-orthogonalized so they stay
 right-handed) to whatever `reverse` produces.
+
+**The `withWorldFrames` assumption.** In the `keep` and `matrix` groups,
+`carry` (`src/wrap/index.js`) leaves its result alone when the result is
+already `inSync` — its `anchors.basis` still matches its own basis, which is
+the common case for a lazy transform result that merely composed a new
+`transforms` matrix onto the same polygons/sides. Otherwise `carry` computes
+the input's world frames (or, for `matrix`, those frames transformed by the
+matrix) and stores them on the result through `withWorldFrames`, which sets
+them as the result's *local* frames against its *current* basis, without
+touching `transforms`. That's correct only because every out-of-sync result
+coming out of modeling has identity `transforms` at that point: fresh
+geometry from `geom2.create`/`geom3.create`, the baked output of
+`geom2.reverse`, `generalize`, and `retessellate`, and clones of inputs that
+`bakeAll` already baked to identity earlier in the same call. A future
+modeling function that returned a new basis with a non-identity `transforms`
+already pending would have its frames stored in the wrong space, silently,
+since nothing checks `transforms` at that point.
 
 ## BOSL2 reference rules
 
