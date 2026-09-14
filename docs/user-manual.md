@@ -125,8 +125,9 @@ M = P · T(0, 0, -overlap) · Ry(π if flip) · Rz(spin) · C⁻¹
   before placement. On a geom2 side anchor, `z` lies in the XY plane, so a
   nonzero `spin` turns the shape out of plane and mirrors it.
 
-`attach` bakes the child's anchored geometry in place before transforming it
-(see "Baking" below).
+`attach` bakes the child or parent in place only when it resolves a default
+anchor on it, since that measures the bounding box (see "Baking" below).
+Explicit anchors on both leave both lazy.
 
 ## `alignTo`
 
@@ -199,10 +200,10 @@ that take anchored geometry fall into groups:
   geometry afterward.
 - **Matrix functions** (`rotate`, `rotateX/Y/Z`, `scale`, `scaleX/Y/Z`,
   `mirror`, `mirrorX/Y/Z`, `transform`, and `geometries.geom2.transform`):
-  apply correctly to geom3 (which never bakes on these calls) and to geom2
-  (which bakes through `reverse` whenever the matrix has negative
-  determinant, such as a mirror or `rotateX(π)`) — frames stay correct and
-  right-handed either way.
+  lazy, and never bake the geometry passed in. geom3 results only compose
+  `transforms`. A geom2 result goes through `reverse` whenever the matrix has
+  negative determinant, such as a mirror or `rotateX(π)`; `reverse` bakes a
+  copy, not the input. Frames stay correct and right-handed either way.
 - **Structure-preserving functions** (`modifiers.generalize`,
   `modifiers.retessellate`, `geometries.geom3.invert`,
   `geometries.geom2.reverse`): the result keeps the same frames unchanged.
@@ -221,8 +222,9 @@ isn't classified.
 
 ### Baking
 
-Several of the above ("Read functions", `attach`, `alignTo`, `anchorArrows`,
-and the anchored booleans) bake the geometry they are given: they convert its
+"Read functions", structure-preserving and frame-dropping functions, `alignTo`,
+`anchorArrows`, the anchored booleans, and `attach` or `anchor` on a default
+anchor bake the geometry they are given: they convert its
 frames to world space, run modeling's own in-place bake (which replaces
 `polygons`/`sides` and resets `transforms` to identity), and store the
 world-space frames back as the new local frames — in place, on the same

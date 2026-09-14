@@ -155,8 +155,9 @@ them as the result's *local* frames against its *current* basis, without
 touching `transforms`. That's correct only because every out-of-sync result
 coming out of modeling has identity `transforms` at that point: fresh
 geometry from `geom2.create`/`geom3.create`, the baked output of
-`geom2.reverse`, `generalize`, and `retessellate`, and clones of inputs that
-`bakeAll` already baked to identity earlier in the same call. A future
+`geom2.reverse` (which bakes a copy, so the `matrix` group never bakes its
+input), `generalize`, and `retessellate`, and, in the `keep` group, clones of
+inputs that `bakeAll` already baked to identity earlier in the same call. A future
 modeling function that returned a new basis with a non-identity `transforms`
 already pending would have its frames stored in the wrong space, silently,
 since nothing checks `transforms` at that point.

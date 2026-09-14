@@ -50,6 +50,17 @@ test('matrix: geom3 mirror stays lazy and correct', () => {
   expectP(m.transforms.mirrorX(cube()), [-4, 0, 0], [-1, 0, 0], [0, 1, 0])
 })
 
+test('matrix: geom3 rotateZ does not bake the input', () => {
+  const g = cube()
+  const polygons = g.polygons
+  const r = m.transforms.rotateZ(1, g)
+  assert.equal(g.polygons, polygons)
+  assert.equal(raw.maths.mat4.isIdentity(g.transforms), false)
+  const c = Math.cos(1)
+  const s = Math.sin(1)
+  expectP(r, [4 * c, 4 * s, 0], [c, s, 0], [-s, c, 0])
+})
+
 test('matrix: geom2 mirrorX keeps frames, right-handed', () => {
   const g = m.transforms.mirrorX(square())
   expectP(g, [-4, 0, 0], [-1, 0, 0], [0, 1, 0])

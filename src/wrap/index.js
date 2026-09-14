@@ -40,7 +40,6 @@ const WRAPPERS = {
     return mapResults(fn(...args), (out, i) => carry(inputs[i], out, (f) => f))
   },
   matrix: (fn, { path, lead }) => (...args) => {
-    bakeAll(args)
     const inputs = flatten(args.slice(lead))
     const result = fn(...args)
     if (!inputs.some((g) => geom2.isA(g) && g.anchors)) return result
