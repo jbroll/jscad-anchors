@@ -124,9 +124,11 @@ them on `fork-main`.
   and the transpiler's `_multmatrix` (jscadui `packages/openscad-runtime/src/transforms.js:131-145`),
   and `transforms` keeps it correct.
 - geom2 mirroring is the exception. `geom2/transform.js:17-25` calls
-  `geom2/reverse` for a matrix with negative determinant, and `reverse`
-  (`geom2/reverse.js:14-20`) bakes the transforms and builds a new geometry,
-  dropping every extra field. v3 keeps only `color` there.
+  `geom2/reverse` for a matrix with negative determinant, and `reverse` bakes
+  the transforms and builds a new geometry. Upstream v2
+  (`geom2/reverse.js:14-20`) drops every extra field, and v3 keeps only
+  `color`. `fork-main` copies all fields (`2e81bb3a`), so `anchors` survives
+  there with stale frames, which the `basis` check detects.
 - `colorize` uses `geom3.clone`/`geom2.clone`, which are
   `Object.assign({}, geometry)` (`geom3/clone.js:7`), so `anchors` survives.
 - Baking transforms mutates in place. `geom3/applyTransforms.js:13-21`
@@ -151,36 +153,60 @@ The `basis` field records which polygon array the frames belong to.
 `applyTransforms` always installs a new array, so
 `geometry.polygons !== anchors.basis` means the transforms were baked.
 
-Decision: a generic field hook in `packages/modeling`, with no anchor logic.
+Decision: jscad-anchors wraps modeling, and modeling is not changed for
+anchors. In-place baking is an intended cache in JSCAD v2 and v3, so anchors
+work around it instead of asking modeling to change.
 
-- A field value on a geometry may define a method under the well-known symbol
-  `Symbol.for('jscad.transformField')`, with signature
-  `(matrix, newGeometry) => newValue`.
-- `geom3/applyTransforms` and `geom2/applyTransforms`, before resetting
-  `transforms`, replace each such field with the method's result for the
-  matrix being baked.
-- `geom2/reverse` copies every extra field onto the geometry it builds, as v3
-  already does for `color`, and applies the same method with the baked matrix.
-- Fields without the method are left alone in `applyTransforms` and copied
-  unchanged by `reverse`.
+`@jbroll/jscad-anchors` re-exports every modeling namespace. Each function
+that takes geometry falls in one group:
 
-The hook is about ten lines, knows nothing about anchors, and can be offered
-upstream to JSCAD as "keep user fields through baking and mirroring." A
-symbol from `Symbol.for` is shared across module copies and needs no registry
-or global state. The anchors package gives `geometry.anchors` that method, so
-frames and `basis` stay correct for every consumer, including raw
-`@jscad/modeling` calls. The `basis` check stays as an assertion that throws
-if frames are read from a modeling build without the hook. The method mirrors
-frames when the matrix has a negative determinant so they stay right-handed.
+- Lazy pass-through: `translate`, `rotate`, `scale`, `center`, `transform`,
+  geom3 `mirror`, `colorize`. Re-exported unchanged; `anchors` rides along
+  and `transforms` keeps it correct.
+- Input-baking: functions that call `applyTransforms` on their inputs, such as
+  the `measurements`, `geom3.toPolygons`, `geom2.toSides`, and
+  `retessellate`. The wrapper bakes each anchored input first, then calls the
+  raw function. Modeling would bake that input anyway, so this adds no work.
+- New geometry: booleans, hulls, extrusions, expansions, and geom2 `mirror`
+  (which goes through `geom2/reverse`). The wrapper bakes anchored inputs,
+  calls the raw function, and applies the rules in "Constructive operations"
+  to the result. For geom2 `mirror` it mirrors each frame so it stays
+  right-handed.
+
+Baking an anchored input does what `applyTransforms` does, on the caller's
+object: it transforms the frames by `geometry.transforms`, calls
+`applyTransforms`, and sets `anchors` to a new value whose `basis` is the new
+polygon or side array. Later calls on that object then neither bake again nor
+desynchronize.
+
+The grouping table is generated from modeling's exports. A test fails when a
+modeling release adds or changes a geometry-taking export that the table does
+not classify.
+
+Raw modeling calls that bypass the wrapper cannot be repaired, because the
+baked matrix is gone. Every read of frames compares `basisOf(geometry)` with
+`anchors.basis`, and a mismatch throws: "geometry was baked outside
+jscad-anchors; import modeling from @jbroll/jscad-anchors".
 
 Rejected:
 
-- Anchor-specific patches to `applyTransforms` and `reverse`. They put anchor
-  code in modeling and grow the fork's diff from upstream.
-- Recovering the baked matrix outside modeling by solving it from
-  corresponding vertices in `anchors.basis` and the new polygon array. It
-  needs no modeling change but fails on flat or degenerate meshes and cannot
-  see fields dropped by `reverse`.
+- A field hook or anchor-specific patch in modeling (`applyTransforms`,
+  `geom2/reverse`). It would make raw calls safe, but since baking in place is
+  intended upstream, it would remain fork divergence unless upstream accepts
+  it (open question 6).
+- Monkey patching modeling at load time. v2's CommonJS files capture each
+  other's exports when required (`toPolygons.js` requires
+  `./applyTransforms`), so replacing namespace functions misses the internal
+  calls, and reaching them means rewriting `require.cache` before modeling
+  loads, which depends on load order. v3 is ESM, whose exports cannot be
+  reassigned. Bundled builds such as jscad-web's `bundle.jscad_modeling.js`
+  have no require cache. It also changes modeling for everything in the
+  process.
+- An accessor on `transforms` or `polygons` that intercepts the bake.
+  `transform` copies fields with `Object.assign`, which copies values and
+  drops accessors, so the first lazy transform loses it.
+- Recovering the baked matrix from corresponding vertices in `anchors.basis`
+  and the new polygon array. It fails on flat or degenerate meshes.
 
 ## Constructive operations
 
@@ -233,6 +259,10 @@ later move to v3's ESM package is mechanical. Names avoid v3's flat exports
 (`union`, `subtract`, `intersect`, `align` already exist there), so a later
 re-export from modeling stays possible.
 
+The package also re-exports all of `@jscad/modeling` with the wrappers from
+"Handling in-place baking", so a model imports both from one place:
+`const { primitives, booleans, anchors } = require('@jbroll/jscad-anchors')`.
+
 ```js
 frame(origin, z, x)                          // orthogonalized frame
 withAnchors(geometry, { name: frame, ... })  // new geometry, frames in its local space
@@ -283,6 +313,9 @@ Additions, generated like the other methods:
   and `intersectAnchored` instead of raw `booleans` (lines 124-131), and
   `.subtract` accepts `{ carry }`.
 - geom2 and path2 classes get the same, where meaningful.
+- Generated methods import modeling namespaces from `@jbroll/jscad-anchors`
+  instead of `@jscad/modeling`, so every fluent call goes through the
+  wrapper.
 
 jscad-fluent gains a dependency on `@jbroll/jscad-anchors`, declared the same
 way as modeling: a peer range for publishing and a `file:` link to the sibling
@@ -306,6 +339,9 @@ A later transpiler change can export BOSL2 anchors:
    `children` are routed) to wrap the shape child's result with
    `withAnchors`, importing `@jbroll/jscad-anchors` in the generated code
    (`helpers/imports.ts`) and adding it to `openscad-runtime`'s dependencies.
+   Generated code and `openscad-runtime` import modeling from
+   `@jbroll/jscad-anchors` rather than `@jscad/modeling`, so runtime helpers
+   such as `_multmatrix` and the extrusions go through the wrapper.
 2. Resolve frames by calling the transpiled `_find_anchor(anchor, geom)`
    (attachments.scad:3313), which returns `[anchor, pos, vec, spin]`, for each
    named anchor in `last(geom)` and each of the 26 direction vectors, and
@@ -321,7 +357,9 @@ on first lookup (open question 3).
 
 ## jscad-ai-studio
 
-- `jscad-work measure --anchors` lists world frames per part.
+- `jscad-work measure --anchors` lists world frames per part. `lib/` loads
+  modeling through `@jbroll/jscad-anchors`, so its own `measure` and `check`
+  calls do not bake anchored geometry behind the wrapper's back.
 - `verify-spec` gains anchor assertions, for example
   `{ "a": "0:bolt1.axis", "b": "1:axis", "coincident": { "tolerance": 0.01, "angle": 0.1 } }`,
   checking origin distance and axis angle from frames, with no mesh
@@ -344,8 +382,9 @@ still unexported, and no anchor or metadata feature was added.
 What changes on the move:
 
 - geom2 stores `outlines` instead of `sides`; only `basisOf` changes.
-- `geom2/reverse` keeps only `color`; the hook widens that to every extra
-  field, so the hook's diff is smaller on v3.
+- `geom2/reverse` keeps only `color`, so `anchors` is dropped by a raw geom2
+  mirror on v3; the wrapper's mirror handling covers it either way.
+- The wrapper's grouping table is regenerated from v3's flat exports.
 - ESM only, flat exports with v2 namespaces kept for compatibility; the
   anchors names above do not collide.
 - `measureBoundingBox` caches per object in a WeakMap
@@ -358,21 +397,22 @@ What changes on the move:
 
 ## Where the package lives
 
-Anchors are additive except for the field hook, and the OpenJSCAD.org fork is
-kept as close to upstream as possible. The layout follows that split:
+The OpenJSCAD.org fork is kept as close to upstream as possible, and anchors
+need no change to it:
 
-- `packages/modeling` on `fork-main` in https://github.com/jbroll/OpenJSCAD.org:
-  the generic field hook only (see "Handling in-place baking"). Nothing else
-  in the fork changes.
-- https://github.com/jbroll/jscad-anchors, a repository beside jscad-fluent:
-  everything else, published as `@jbroll/jscad-anchors`, with its own tests.
-  Native models, jscad-fluent, and the transpiler depend on it.
+- https://github.com/jbroll/jscad-anchors, a repository beside jscad-fluent,
+  holds all anchor code, published as `@jbroll/jscad-anchors` with its own
+  tests. Native models, jscad-fluent, the transpiler, and jscad-ai-studio
+  import modeling through it.
+- `packages/modeling` on `fork-main` in https://github.com/jbroll/OpenJSCAD.org
+  carries one related fix, `2e81bb3a`: `geom2/reverse` keeps the geometry's
+  fields. It is a JSCAD bug (mirroring a colored geom2 lost its color) to
+  submit upstream, and anchors do not depend on it.
 
-Rebasing the fork onto upstream master or v3 carries only the hook, and
-anchors version and release independently of modeling. If upstream JSCAD
-accepts the hook, anchors run on stock `@jscad/modeling` with no fork at all
-(open question 6). The cost is a fifth sibling checkout and keeping the
-anchors peer range in step with the modeling versions that have the hook.
+Anchors version and release independently of modeling, and rebasing the fork
+onto upstream master or v3 carries no anchor code. The cost is a fifth
+sibling checkout and keeping the wrapper's grouping table in step with the
+modeling releases it wraps.
 
 Rejected:
 
@@ -387,12 +427,16 @@ Rejected:
 
 ## Testing
 
-- Modeling: ava tests for the field hook alone, with a dummy field, in
-  geom3 and geom2 `applyTransforms` and `geom2/reverse`, plus a check that
-  geometry without extra fields is unchanged and the suite still passes.
-- Anchors: unit tests per function in this repository, run against the
-  sibling modeling checkout.
-- geom2 `mirror` keeps frames, right-handed, through the hook in `reverse`.
+- Unit tests per function in this repository, run against the sibling
+  modeling checkout.
+- Wrapper coverage: for each group (lazy pass-through, input-baking, new
+  geometry), frames on an anchored, transformed input stay correct through
+  the wrapped call; and the grouping table covers every geometry-taking
+  modeling export.
+- Raw bake detection: calling raw `@jscad/modeling` `measureBoundingBox` or a
+  raw boolean on an anchored, transformed geometry, then reading its frames,
+  throws the "baked outside jscad-anchors" error.
+- geom2 `mirror` keeps frames, right-handed, through the wrapper.
 - Default anchors after an in-place bake match a freshly measured box, which
   guards v3's per-object bounding-box cache.
 - Frames through transform chains: random `translate`/`rotate`/`scale`/`mirror`
@@ -421,6 +465,11 @@ Rejected:
    first operand's like `subtract` and `intersect`?
 5. Do serializers and `format-jscad` ignore the extra `anchors` field? Not
    checked.
-6. Offer the field hook upstream to JSCAD (v2 master, v3, or both)? If
-   accepted, anchors run on stock `@jscad/modeling` and the fork carries no
-   anchor-related change.
+6. Offer a field hook upstream to JSCAD (v2 master, v3, or both)? A field
+   value would define a method under `Symbol.for('jscad.transformField')`,
+   `(matrix, newGeometry) => newValue`, which `applyTransforms` and
+   `geom2/reverse` call before resetting `transforms`. It is about ten lines
+   and knows nothing about anchors. If accepted, raw modeling calls on
+   anchored geometry become safe and the wrapper's input-baking step can be
+   dropped. Submit the `geom2/reverse` field fix (`2e81bb3a`) separately as a
+   bug report.

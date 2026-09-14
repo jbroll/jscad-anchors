@@ -7,5 +7,6 @@ and the OpenSCAD transpiler in [jscadui](https://github.com/jbroll/jscadui).
 
 Status: design only. See [`docs/design/anchors.md`](docs/design/anchors.md).
 
-Requires the `jscad.transformField` hook in `@jscad/modeling`, carried on the
-`fork-main` branch of [jbroll/OpenJSCAD.org](https://github.com/jbroll/OpenJSCAD.org).
+Wraps `@jscad/modeling` and needs no change to it. Developed against the
+`fork-main` branch of [jbroll/OpenJSCAD.org](https://github.com/jbroll/OpenJSCAD.org),
+checked out as a sibling at `../OpenJSCAD.org`.
