@@ -42,21 +42,6 @@ in this repository until the transpiler work above lands. The same test
 should compare `attach` results against BOSL2's `_attach_transform`
 (attachments.scad:3200), not only frames against `_find_anchor`.
 
-## jscad-ai-studio
-
-- `jscad-work measure --anchors` lists world frames per part; `lib/` loads
-  modeling through `@jbroll/jscad-anchors` so its own `measure` and `check`
-  calls don't bake anchored geometry behind the wrapper's back.
-- `verify-spec` gains anchor assertions, for example
-  `{ "a": "0:bolt1.axis", "b": "1:axis", "coincident": { "tolerance": 0.01, "angle": 0.1 } }`,
-  checking origin distance and axis angle from frames directly, no mesh
-  analysis.
-- This replaces the "Hole alignment across parts" item in jscad-ai-studio's
-  own backlog, which currently detects alignment after the fact from
-  meshes and cannot find holes inside a part.
-- `skills/jscad-assembly` gets taught `attach` and `subtractAnchored` with
-  `carry`.
-
 ## `anchorArrows` viewer screenshot test
 
 `anchorArrows` renders geom3 arrows correctly per `test/debug.test.js`, but
@@ -90,8 +75,18 @@ or neither) a frame lands on — open question, not decided.
 
 ## Serializers and `format-jscad`
 
-Not checked: whether JSCAD's serializers, and `format-jscad` specifically,
-ignore the extra `anchors` field on geometry, or choke on it.
+Checked from jscad-ai-studio against an anchored, transformed plate:
+
+- `@jscad/stl-serializer`, `3mf-serializer`, `obj-serializer`, and
+  `svg-serializer` bake geometry with raw modeling. Their output bytes are
+  unchanged by the `anchors` field, but the frames are stale afterward, so any
+  later `anchors()` or wrapped call on the same object throws the raw-bake
+  error. Callers that read geometry after serializing must do so first.
+- `@jscadui/format-jscad` reads only `polygons`, `sides`, `outlines`, `color`,
+  and `transforms`, never calls modeling, and ignores `anchors`.
+
+Left open: whether the serializers should import modeling through this
+package, which the field hook below would make unnecessary.
 
 ## Field hook upstream
 
