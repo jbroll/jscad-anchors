@@ -41,6 +41,11 @@ package relies on.
 `$@jscad/modeling` makes every nested `@jscad/modeling` use the root
 dependency's spec.
 
+The package is CommonJS. ES modules can import it by name
+(`import { anchors, booleans } from '@jbroll/jscad-anchors'`), because
+`src/index.js` assigns `module.exports` an object literal that Node's
+named-export detection can read.
+
 ## Local development
 
 This package is developed against the `fork-main` branch of
