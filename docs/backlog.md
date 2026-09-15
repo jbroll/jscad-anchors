@@ -9,6 +9,66 @@ paths only (`booleans.union`, `transforms.translate`), so a model that takes
 these top-level functions from `@jscad/modeling` loses anchors silently in
 the viewer's manifold engine.
 
+## Release
+
+`@jbroll/jscad-anchors` 0.1.0 is not published to npm. `dist/jscad-anchors.cjs`
+is the viewer build, which jsdelivr will serve at
+`@jbroll/jscad-anchors@0/dist/jscad-anchors.cjs`. Publish it before the
+jscadui deploy.
+
+## 2D manifold paths have no tests
+
+`ManifoldGeom2` support in `src/storage.js` and `src/wrap/index.js` is
+implemented by reading jscadui's `ManifoldGeom2` source only; no test
+exercises it. Two differences from the plain engine, both read from
+jscadui's `packages/manifold/src/transforms/index.js`:
+
+- A mirror whose normal has no x/y component is a no-op for a manifold
+  geom2 (`transforms/index.js:268-269`, `if (nx === 0 && ny === 0) return
+  geom`), so frames are not flipped the way plain geom2's `mirrorZ` flips
+  them.
+- `withAnchors` on an empty `ManifoldGeom2(null)` throws `withAnchors:
+  geometry must be geom2 or geom3` (`src/storage.js` `basisOf`/`withAnchors`):
+  the geometry's `crossSection` getter returns `null`
+  (`ManifoldGeom2.js:84-92`), so `basisOf` returns `null` and `withAnchors`
+  takes its "not geom2 or geom3" branch.
+
+## Extra translate on every manifold carry
+
+`src/storage.js` `cloneManifold` always runs a zero `transforms.translate`
+for `ManifoldGeom3`, even when the result already owns a fresh handle. Only
+`colorize` results (built with `clone()` in
+`jscadui/packages/manifold/src/colors/index.js:33-36`) share a handle and
+need the copy; results of `translate`, `rotate`, `scale`, `mirror`, and
+`transform` already have their own handle before `cloneManifold` runs.
+
+## Empty manifold input gives NaN frame origins
+
+`src/wrap/index.js`'s `boxCenter` (line 12) averages `min`/`max` from
+`boundingBox()`. An empty manifold's bounding box has `min`/`max` at
+infinity, so `center`/`align` on empty manifold input compute a frame
+origin of `NaN` instead of leaving frames alone.
+
+## Null arguments misalign inputs and results
+
+`src/wrap/index.js` builds `inputs` with `raw.utils.flatten(args.slice(lead))`
+(lines 46, 62, 79, 83), which keeps `null` entries. jscadui's manifold
+`center`/`align` (`packages/manifold/src/transforms/index.js:393,473`) filter
+`null` out of their own geometry list before building results. A `null`
+argument therefore makes `inputs[i]` in the `lazy`/`matrix`/`bake` wrappers
+correspond to the wrong result, since `inputs` is longer than the filtered
+result array.
+
+## Plain geometry loses anchors under manifold transforms
+
+Anchored plain geom2/geom3 passed to manifold's `translate` or `colorize`
+is converted into a fresh `ManifoldGeom3`/`ManifoldGeom2` with no `anchors`
+field (`transforms/index.js:44-52`, `colors/index.js:33-36` build a new
+object from `toManifold(geom)`/`geom.clone()` with no `anchors` carried).
+`src/wrap/index.js`'s carry only fires for inputs that are already manifold
+geometry (`anchoredManifold`, line 32), so a plain anchored input silently
+loses its frames the first time it crosses into the manifold engine.
+
 ## Transpiler (jscadui)
 
 `packages/openscad` in jscadui transpiles BOSL2's `attachable()`
