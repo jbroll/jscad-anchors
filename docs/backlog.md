@@ -1,5 +1,14 @@
 # Backlog
 
+## Manifold engine: top-level functions bypass the wrapper
+
+`jscadui/packages/manifold/src/index.js:76-109` re-exports top-level
+functions (`union`, `subtract`, `translate`, ...) beside its namespaces
+(`booleans`, `transforms`, ...). `src/wrap/groups.js` classifies namespaced
+paths only (`booleans.union`, `transforms.translate`), so a model that takes
+these top-level functions from `@jscad/modeling` loses anchors silently in
+the viewer's manifold engine.
+
 ## Transpiler (jscadui)
 
 `packages/openscad` in jscadui transpiles BOSL2's `attachable()`
