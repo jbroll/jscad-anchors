@@ -296,6 +296,18 @@ the fork beyond the one hook); anchors inside `packages/modeling` itself
 published); a subpath export of jscad-fluent (transpiled output would then
 depend on jscad-fluent).
 
+## Browser build
+
+`src/browser.js` and `scripts/build.js` produce `dist/jscad-anchors.cjs`, a
+single-file CommonJS bundle for consumers that load a module by URL instead
+of through npm (the jscadui viewer). The bundle requires modeling as
+`@jscad/modeling-for-anchors` rather than `@jscad/modeling`, so the viewer
+can map `@jscad/modeling` to this build and `@jscad/modeling-for-anchors` to
+the engine's own modeling bundle (plain JSCAD or manifold) without a name
+clash. It exports every top-level key of whatever modeling it is given,
+wrapped, plus `anchors`, because the viewer's worker reads `ready` and
+`setUseGpuNormals` from whatever `@jscad/modeling` resolves to.
+
 ## Remaining open questions
 
 1. **Extrusion caps.** Should extrusions lift 2D frames to the bottom cap,

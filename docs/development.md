@@ -4,11 +4,14 @@ Needs a sibling checkout of the modeling fork at `../OpenJSCAD.org` on `fork-mai
 
 ```
 npm install
-npm test               # node's built-in test runner; no build step
+npm test               # node's built-in test runner
 npm run types          # checks src/index.d.ts
 npm run exports:check  # checks the wrapper's group table against modeling
+npm run build          # writes the single-file browser build
 ```
 
 When modeling adds, removes, or changes a function, `npm run exports:check` prints the table lines to add or fix in `src/wrap/groups.js`. The groups are described in `docs/architecture.md`.
+
+`npm run build` bundles `src/browser.js` with esbuild into `dist/jscad-anchors.cjs`, a single CommonJS file for consumers (such as the jscadui viewer) that load a module by URL rather than through npm.
 
 Release with `npm publish` from a clean tree.
