@@ -7,6 +7,9 @@ const { unionAnchored, subtractAnchored, intersectAnchored } = require('../boole
 
 const { flatten } = raw.utils
 const { geom2, path2 } = raw.geometries
+const { mat4 } = raw.maths
+
+const boxCenter = ([min, max]) => [0, 1, 2].map((k) => ((min[k] || 0) + (max[k] || 0)) / 2)
 
 // Manifold's transforms and colorize return new objects that keep only color, so lazy results lose anchors.
 const lazyDropsFields = typeof raw.geometries.isManifoldGeom3 === 'function'
@@ -48,9 +51,24 @@ const WRAPPERS = {
       return carryAll(inputs, result, (f) => transformFrame(matrix, f))
     }
   },
-  bake: (fn) => (...args) => {
-    bakeAll(args)
-    return fn(...args)
+  bake: (fn, { path, lead }) => {
+    const baked = (...args) => {
+      bakeAll(args)
+      return fn(...args)
+    }
+    if (!lazyDropsFields || !path.startsWith('transforms.')) return baked
+    // Manifold's center and align rebuild geometry from a translated handle, keeping only color.
+    return (...args) => {
+      const inputs = flatten(args.slice(lead))
+      const result = baked(...args)
+      if (!inputs.some(anchoredManifold)) return result
+      return mapResults(result, (out, i) => {
+        if (!anchoredManifold(inputs[i]) || !isManifold(out)) return out
+        const [from, to] = [inputs[i], out].map((g) => boxCenter(g.boundingBox()))
+        const move = mat4.fromTranslation(mat4.create(), [0, 1, 2].map((k) => to[k] - from[k]))
+        return carry(inputs[i], out, (f) => transformFrame(move, f))
+      })
+    }
   },
   drop: (fn) => (...args) => {
     bakeAll(args)

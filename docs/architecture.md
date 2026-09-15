@@ -195,15 +195,22 @@ jscad-fluent's wrappers forward too. Three things differ from plain JSCAD:
 - **Basis.** Manifold geometry has identity `transforms` and never bakes in
   place, so `basisOf` returns the Manifold handle (geom3) or the
   `crossSection`/`jscadGeom2` source (geom2) instead of reading `polygons` or
-  `sides`. The handle is shared by `clone()`, so frames stay in sync on a
-  copy.
+  `sides`. The basis is read from the copy after it is made, since a geom3
+  copy has its own handle.
 - **Copies.** `Object.assign({}, geometry)` keeps only own fields
   (`transforms`, `anchors`) and drops the getters. A copy built on the
   prototype does not work either: its getters throw when they read private
   fields of an object that is not the original instance. `withAnchors`,
-  `withWorldFrames`, and the `drop` group's `stripStale` therefore call the
-  geometry's own `clone()`, which shares the Manifold handle and color, then
-  set the own fields and `anchors` on the clone.
+  `withWorldFrames`, and the `drop` group's `stripStale` therefore build the
+  copy with the engine's own operations, then set the own fields and
+  `anchors` on it. For geom3 that is `translate([0, 0, 0], g)`, not
+  `clone()`. `ManifoldGeom3.clone()` wraps the same Manifold handle in a
+  second instance, and every instance registers its handle with a
+  `FinalizationRegistry` that calls `delete()`. Once the source is garbage
+  collected, the clone's handle would be freed under it, and for
+  `withAnchors(cuboid(...))` the source becomes garbage immediately. A zero
+  translate returns a new handle and keeps color. `ManifoldGeom2` registers
+  nothing, so geom2 still uses `clone()`.
 - **Transforms.** Manifold's `translate`, `rotate`, `scale`, `mirror`,
   `transform`, and `colorize` return new objects that keep only `color`, so
   frames are lost where plain JSCAD's lazy transforms would copy them. When
@@ -215,6 +222,14 @@ jscad-fluent's wrappers forward too. Three things differ from plain JSCAD:
   did for geom2. Over plain JSCAD the `lazy` functions stay the raw
   functions and the `matrix` group still skips plain geom3, so nothing new
   runs there.
+- **Center and align.** `transforms.center`, `centerX`, `centerY`,
+  `centerZ`, and `align` are in the `bake` group. Over plain JSCAD they move
+  geometry through lazy `translate`, which keeps anchors. Manifold's versions
+  build a new object from a translated handle, keeping only color. Behind the
+  same engine check, the `bake` wrapper for these `transforms.*` entries
+  carries frames onto manifold results, moved by the difference between the
+  input's and the output's `boundingBox()` centers. `boundingBox()` is native
+  on both manifold classes and does not convert the mesh.
 
 Booleans already rebuild the result's frames through `withWorldFrames`, so
 they needed only the copy change. None of these paths reads `polygons` or
@@ -279,9 +294,11 @@ understand and explain this" comment at line 42.
 
 Full detail for each lives in `docs/backlog.md`.
 
-- **jscad-fluent**: its wrapper copies every field
-  (`Object.assign(this, geometry)`) and every method re-wraps the raw
-  result, so `anchors` rides along unchanged. `FluentGeom2` and `FluentGeom3`
+- **jscad-fluent**: its wrapper (`src/copyGeometry.ts`) copies the
+  geometry's own enumerable data, `anchors` included. It adds non-enumerable
+  forwarders for prototype getters and methods, so manifold geometry keeps
+  `polygons`, its markers, and its handle. Every method re-wraps the raw
+  result. `FluentGeom2` and `FluentGeom3`
   have `.withAnchors`, `.anchor`, `.attachTo`, and `.alignTo`. All generated
   methods import modeling from `@jbroll/jscad-anchors`, so the booleans are
   the anchored ones and `.subtract` takes `{ carry }`.

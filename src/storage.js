@@ -1,5 +1,5 @@
 'use strict'
-const { geometries, maths } = require('@jscad/modeling')
+const { geometries, maths, transforms } = require('@jscad/modeling')
 const { frame, transformFrame, mapFrames } = require('./frame')
 const { canonicalName } = require('./names')
 
@@ -17,18 +17,22 @@ const manifoldBasis = (geometry) => {
   return geometry.hasJscadSource ? geometry.jscadGeom2 : geometry.crossSection
 }
 
-// A plain copy loses manifold's private mesh fields and prototype getters; clone shares them.
-const cloneManifold = (geometry, anchors) => {
-  const out = geometry.clone()
+// A plain copy loses manifold's private fields and getters. ManifoldGeom3.clone() shares a handle that each
+// instance's FinalizationRegistry deletes, so a zero translate gives the copy its own; ManifoldGeom2 registers none.
+const cloneManifold = (geometry) => {
+  const out = geometry.isManifoldGeom3 === true ? transforms.translate([0, 0, 0], geometry) : geometry.clone()
   for (const key of Object.keys(geometry)) {
     if (key !== 'anchors') Reflect.set(out, key, geometry[key])
   }
-  if (anchors) out.anchors = anchors
   return out
 }
 
-const copyWithAnchors = (geometry, anchors) =>
-  isManifold(geometry) ? cloneManifold(geometry, anchors) : Object.assign({}, geometry, { anchors })
+const copyWithFrames = (geometry, frames) => {
+  if (!isManifold(geometry)) return Object.assign({}, geometry, { anchors: { frames, basis: basisOf(geometry) } })
+  const out = cloneManifold(geometry)
+  out.anchors = { frames, basis: basisOf(out) }
+  return out
+}
 
 const basisOf = (geometry) => {
   if (isManifold(geometry)) return manifoldBasis(geometry)
@@ -53,16 +57,15 @@ const worldFrames = (geometry) => {
 }
 
 const withAnchors = (geometry, frames) => {
-  const basis = basisOf(geometry)
-  if (!basis) throw new Error('withAnchors: geometry must be geom2 or geom3')
+  if (!basisOf(geometry)) throw new Error('withAnchors: geometry must be geom2 or geom3')
   const merged = Object.assign({}, localFrames(geometry))
   for (const [name, f] of Object.entries(frames)) merged[canonicalName(name)] = frame(f.origin, f.z, f.x)
-  return copyWithAnchors(geometry, { frames: Object.freeze(merged), basis })
+  return copyWithFrames(geometry, Object.freeze(merged))
 }
 
 const withWorldFrames = (geometry, frames) => {
   if (Object.keys(frames).length === 0 && !geometry.anchors) return geometry
-  return copyWithAnchors(geometry, { frames: Object.freeze(Object.assign({}, frames)), basis: basisOf(geometry) })
+  return copyWithFrames(geometry, Object.freeze(Object.assign({}, frames)))
 }
 
 const bake = (geometry) => {

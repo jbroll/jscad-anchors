@@ -94,8 +94,8 @@ const TABLE = {
   'modifiers.snap': ['keep', 0, 0],
   'modifiers.retessellate': ['keep', 1, 0],
 
-  'transforms.align': ['bake', 1],
-  'transforms.center': ['bake', 1],
+  'transforms.align': ['bake', 1, 1],
+  'transforms.center': ['bake', 1, 1],
   'transforms.centerX': ['bake', 0],
   'transforms.centerY': ['bake', 0],
   'transforms.centerZ': ['bake', 0],
