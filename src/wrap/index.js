@@ -1,12 +1,15 @@
 'use strict'
 const raw = require('@jscad/modeling')
 const { classify } = require('./groups')
-const { bakeAll, basisOf, worldFrames, withWorldFrames } = require('../storage')
+const { bakeAll, basisOf, cloneManifold, isManifold, worldFrames, withWorldFrames } = require('../storage')
 const { transformFrame, mapFrames } = require('../frame')
 const { unionAnchored, subtractAnchored, intersectAnchored } = require('../booleans')
 
 const { flatten } = raw.utils
 const { geom2, path2 } = raw.geometries
+
+// Manifold's transforms and colorize return new objects that keep only color, so lazy results lose anchors.
+const lazyDropsFields = typeof raw.geometries.isManifoldGeom3 === 'function'
 
 const mapResults = (result, fn) => (Array.isArray(result) ? result.map(fn) : fn(result, 0))
 
@@ -17,15 +20,34 @@ const carry = (input, out, fn) => {
   return withWorldFrames(out, mapFrames(worldFrames(input), fn))
 }
 
+const carryAll = (inputs, result, fn) => mapResults(result, (out, i) => carry(inputs[i], out, fn))
+
+const matrixOf = (fn, path, lead, args) => path === 'geometries.geom2.transform'
+  ? args[0]
+  : fn(...args.slice(0, lead), path2.create()).transforms
+
+const anchoredManifold = (g) => isManifold(g) && Boolean(g.anchors)
+
 const stripStale = (out) => {
   if (!out || !out.anchors || inSync(out)) return out
+  if (isManifold(out)) return cloneManifold(out)
   const { anchors, ...rest } = out
   return rest
 }
 
 const WRAPPERS = {
   none: (fn) => fn,
-  lazy: (fn) => fn,
+  lazy: (fn, { path, lead }) => {
+    if (!lazyDropsFields || lead === 0) return fn
+    return (...args) => {
+      const inputs = flatten(args.slice(lead))
+      const result = fn(...args)
+      if (!inputs.some(anchoredManifold)) return result
+      if (!path.startsWith('transforms.')) return carryAll(inputs, result, (f) => f)
+      const matrix = matrixOf(fn, path, lead, args)
+      return carryAll(inputs, result, (f) => transformFrame(matrix, f))
+    }
+  },
   bake: (fn) => (...args) => {
     bakeAll(args)
     return fn(...args)
@@ -42,11 +64,9 @@ const WRAPPERS = {
   matrix: (fn, { path, lead }) => (...args) => {
     const inputs = flatten(args.slice(lead))
     const result = fn(...args)
-    if (!inputs.some((g) => geom2.isA(g) && g.anchors)) return result
-    const matrix = path === 'geometries.geom2.transform'
-      ? args[0]
-      : fn(...args.slice(0, lead), path2.create()).transforms
-    return mapResults(result, (out, i) => carry(inputs[i], out, (f) => transformFrame(matrix, f)))
+    if (!inputs.some((g) => anchoredManifold(g) || (!isManifold(g) && geom2.isA(g) && g.anchors))) return result
+    const matrix = matrixOf(fn, path, lead, args)
+    return carryAll(inputs, result, (f) => transformFrame(matrix, f))
   },
   union: () => unionAnchored,
   subtract: () => subtractAnchored,

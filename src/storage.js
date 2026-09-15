@@ -8,7 +8,30 @@ const { mat4 } = maths
 
 const BAKED_OUTSIDE = 'geometry was baked outside jscad-anchors; import modeling from @jbroll/jscad-anchors'
 
+const isManifold = (geometry) =>
+  Boolean(geometry) && (geometry.isManifoldGeom3 === true || geometry.isManifoldGeom2 === true)
+
+// Manifold geometry never bakes in place, and reading polygons or sides would convert the whole mesh.
+const manifoldBasis = (geometry) => {
+  if (geometry.isManifoldGeom3 === true) return geometry.manifold
+  return geometry.hasJscadSource ? geometry.jscadGeom2 : geometry.crossSection
+}
+
+// A plain copy loses manifold's private mesh fields and prototype getters; clone shares them.
+const cloneManifold = (geometry, anchors) => {
+  const out = geometry.clone()
+  for (const key of Object.keys(geometry)) {
+    if (key !== 'anchors') Reflect.set(out, key, geometry[key])
+  }
+  if (anchors) out.anchors = anchors
+  return out
+}
+
+const copyWithAnchors = (geometry, anchors) =>
+  isManifold(geometry) ? cloneManifold(geometry, anchors) : Object.assign({}, geometry, { anchors })
+
 const basisOf = (geometry) => {
+  if (isManifold(geometry)) return manifoldBasis(geometry)
   if (geom3.isA(geometry)) return geometry.polygons
   if (geom2.isA(geometry)) return geometry.sides
   return undefined
@@ -34,12 +57,12 @@ const withAnchors = (geometry, frames) => {
   if (!basis) throw new Error('withAnchors: geometry must be geom2 or geom3')
   const merged = Object.assign({}, localFrames(geometry))
   for (const [name, f] of Object.entries(frames)) merged[canonicalName(name)] = frame(f.origin, f.z, f.x)
-  return Object.assign({}, geometry, { anchors: { frames: Object.freeze(merged), basis } })
+  return copyWithAnchors(geometry, { frames: Object.freeze(merged), basis })
 }
 
 const withWorldFrames = (geometry, frames) => {
   if (Object.keys(frames).length === 0 && !geometry.anchors) return geometry
-  return Object.assign({}, geometry, { anchors: { frames: Object.freeze(Object.assign({}, frames)), basis: basisOf(geometry) } })
+  return copyWithAnchors(geometry, { frames: Object.freeze(Object.assign({}, frames)), basis: basisOf(geometry) })
 }
 
 const bake = (geometry) => {
@@ -60,5 +83,5 @@ const bakeAll = (args) => {
 }
 
 module.exports = {
-  BAKED_OUTSIDE, basisOf, isAnchorable, localFrames, worldFrames, withAnchors, withWorldFrames, bake, bakeAll
+  BAKED_OUTSIDE, isManifold, cloneManifold, basisOf, isAnchorable, localFrames, worldFrames, withAnchors, withWorldFrames, bake, bakeAll
 }

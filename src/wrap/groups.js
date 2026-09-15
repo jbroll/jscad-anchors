@@ -15,7 +15,7 @@ const PREFIXES = {
 }
 
 const TABLE = {
-  'colors.colorize': ['lazy', 1],
+  'colors.colorize': ['lazy', 1, 1],
   'colors.colorNameToRgb': ['none', 1],
   'colors.hexToRgb': ['none', 1],
   'colors.hslToRgb': ['none', 0],
@@ -112,10 +112,10 @@ const TABLE = {
   'transforms.scaleY': ['matrix', 1, 1],
   'transforms.scaleZ': ['matrix', 1, 1],
   'transforms.transform': ['matrix', 1, 1],
-  'transforms.translate': ['lazy', 1],
-  'transforms.translateX': ['lazy', 1],
-  'transforms.translateY': ['lazy', 1],
-  'transforms.translateZ': ['lazy', 1]
+  'transforms.translate': ['lazy', 1, 1],
+  'transforms.translateX': ['lazy', 1, 1],
+  'transforms.translateY': ['lazy', 1, 1],
+  'transforms.translateZ': ['lazy', 1, 1]
 }
 
 const classify = (path) => {

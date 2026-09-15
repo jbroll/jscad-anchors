@@ -182,6 +182,45 @@ modeling function that returned a new basis with a non-identity `transforms`
 already pending would have its frames stored in the wrong space, silently,
 since nothing checks `transforms` at that point.
 
+## Manifold geometry
+
+jscadui's manifold engine (`packages/manifold`) returns `ManifoldGeom3` and
+`ManifoldGeom2` class instances instead of plain geom objects. The mesh lives
+in private (`#`) fields; `type`, `polygons`, `sides`, `manifold`, and
+`crossSection` are getters on the class prototype, and reading `polygons` or
+`sides` converts the whole mesh. `isManifold` (`src/storage.js`) recognizes
+this geometry by its `isManifoldGeom3`/`isManifoldGeom2` markers, which
+jscad-fluent's wrappers forward too. Three things differ from plain JSCAD:
+
+- **Basis.** Manifold geometry has identity `transforms` and never bakes in
+  place, so `basisOf` returns the Manifold handle (geom3) or the
+  `crossSection`/`jscadGeom2` source (geom2) instead of reading `polygons` or
+  `sides`. The handle is shared by `clone()`, so frames stay in sync on a
+  copy.
+- **Copies.** `Object.assign({}, geometry)` keeps only own fields
+  (`transforms`, `anchors`) and drops the getters. A copy built on the
+  prototype does not work either: its getters throw when they read private
+  fields of an object that is not the original instance. `withAnchors`,
+  `withWorldFrames`, and the `drop` group's `stripStale` therefore call the
+  geometry's own `clone()`, which shares the Manifold handle and color, then
+  set the own fields and `anchors` on the clone.
+- **Transforms.** Manifold's `translate`, `rotate`, `scale`, `mirror`,
+  `transform`, and `colorize` return new objects that keep only `color`, so
+  frames are lost where plain JSCAD's lazy transforms would copy them. When
+  the modeling module exports `geometries.isManifoldGeom3`, the `lazy` group
+  wraps `transforms.translate*` and `colors.colorize` (their `TABLE` entries
+  record `lead`) and carries frames onto results that lack them: translated
+  by the matrix the call gives a `path2`, or unchanged for `colorize`. The
+  `matrix` group carries frames for anchored manifold inputs as it already
+  did for geom2. Over plain JSCAD the `lazy` functions stay the raw
+  functions and the `matrix` group still skips plain geom3, so nothing new
+  runs there.
+
+Booleans already rebuild the result's frames through `withWorldFrames`, so
+they needed only the copy change. None of these paths reads `polygons` or
+`sides` (`test/manifold.test.js` counts reads on a fake shaped like
+`ManifoldGeom3`).
+
 ## BOSL2 reference rules
 
 Two BOSL2 conventions are implemented, resolving spec open question 1 (what
