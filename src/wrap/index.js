@@ -53,15 +53,25 @@ const WRAPPERS = {
   intersect: () => intersectAnchored
 }
 
-const wrapTree = (node, prefix) => {
+const isPlainObject = (value) => {
+  if (!value || typeof value !== 'object') return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+// The viewer's require sets exports.default = exports, so the tree can contain itself.
+const wrapTree = (node, prefix, wrapped = new Map()) => {
   const out = {}
+  wrapped.set(node, out)
   for (const [key, value] of Object.entries(node)) {
     const path = prefix ? `${prefix}.${key}` : key
     if (typeof value === 'function') {
       const entry = classify(path)
       out[key] = entry ? WRAPPERS[entry.group](value, { path, ...entry }) : value
-    } else if (value && typeof value === 'object' && !Array.isArray(value) && !ArrayBuffer.isView(value)) {
-      out[key] = wrapTree(value, path)
+    } else if (wrapped.has(value)) {
+      out[key] = wrapped.get(value)
+    } else if (isPlainObject(value)) {
+      out[key] = wrapTree(value, path, wrapped)
     } else {
       out[key] = value
     }
