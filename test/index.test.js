@@ -16,8 +16,12 @@ test('re-exports modeling namespaces', () => {
 
 test('ESM import sees every export by name', async () => {
   const esm = await import('../src/index.js')
-  const expected = [...Object.keys(require('@jscad/modeling')), 'anchors', 'default']
-  assert.deepEqual(Object.keys(esm).sort(), expected.sort())
+  const expected = [...Object.keys(require('@jscad/modeling')), 'anchors', 'default',
+    'wrapTree', 'isTreeNode', 'TREE_BASIS']
+  // Node's CJS interop surfaces the literal `module.exports` binding alongside
+  // the detected names; it is not part of the package's export surface.
+  const actual = Object.keys(esm).filter((name) => name !== 'module.exports')
+  assert.deepEqual(actual.sort(), expected.sort())
 })
 
 test('anchors is a function with the API as properties', () => {

@@ -25,11 +25,18 @@ const carry = (input, out, fn) => {
 
 const carryAll = (inputs, result, fn) => mapResults(result, (out, i) => carry(inputs[i], out, fn))
 
-const matrixOf = (fn, path, lead, args) => path === 'geometries.geom2.transform'
-  ? args[0]
-  : fn(...args.slice(0, lead), path2.create()).transforms
+const matrixOf = (fn, path, lead, args) => {
+  // A tree node stores its affine matrix at construction; reading it avoids
+  // building a throwaway node through the engine.
+  const operand = path === 'geometries.geom2.transform' ? args[1] : args[lead]
+  if (operand && operand.isTreeNode === true && operand.matrix) return operand.matrix
+  return path === 'geometries.geom2.transform'
+    ? args[0]
+    : fn(...args.slice(0, lead), path2.create()).transforms
+}
 
-const anchoredManifold = (g) => isManifold(g) && Boolean(g.anchors)
+// A tagged tree node carries frames too; the outer wrap must see it as anchored.
+const anchoredManifold = (g) => Boolean(g && g.anchors) && (isManifold(g) || g.isTreeNode === true)
 
 const stripStale = (out) => {
   if (!out || !out.anchors || inSync(out)) return out
@@ -117,4 +124,4 @@ const wrapTree = (node, prefix, wrapped = new Map()) => {
   return out
 }
 
-module.exports = wrapTree(raw, '')
+module.exports = Object.assign(wrapTree(raw, ''), { wrapTree })
