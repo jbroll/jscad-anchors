@@ -9,6 +9,7 @@ const {
 } = require('../src/storage')
 const { isOptions } = require('../src/booleans')
 const { resolveAnchor, attach, alignTo } = require('../src/place')
+const { defaultFrame } = require('../src/defaults')
 
 const node = (op, dim, extra = {}) => Object.assign({
   op,
@@ -107,6 +108,47 @@ test('attach and alignTo on real geometry stay eager', () => {
   assert.equal(alignTo(cube(), plate(), 'top').isTreeNode, undefined)
 })
 
+// Third combination: a real-geometry child with a node parent. The child's frame
+// is eager, so the eager transform path places it and returns real geometry; only
+// a node child folds or defers. The node parent must contribute only its frame.
+test('real-geometry child with a node parent stays eager geometry', () => {
+  const topFrame = frame([0, 0, 1], [0, 0, 1], [1, 0, 0])
+  const plate = withAnchors(node('primitives.cuboid', 3, { params: { size: [10, 10, 2] } }), { top: topFrame })
+  const out = attach(raw.primitives.cube({ size: 2 }), 'bottom', plate, 'top', { flip: false })
+  assert.equal(out.isTreeNode, undefined)
+
+  const realPlate = withAnchors(raw.primitives.cuboid({ size: [10, 10, 2] }), { top: topFrame })
+  const eager = attach(raw.primitives.cube({ size: 2 }), 'bottom', realPlate, 'top', { flip: false })
+  const [omin, omax] = raw.measurements.measureBoundingBox(out)
+  const [emin, emax] = raw.measurements.measureBoundingBox(eager)
+  close(omin, emin)
+  close(omax, emax)
+  close([raw.measurements.measureVolume(out)], [raw.measurements.measureVolume(eager)])
+})
+
+test('defaultFrame defers a node anchor without eager geometry', () => {
+  const cube = node('primitives.cube', 3)
+  const ref = defaultFrame(cube, [0, 0, 1])
+  assert.equal(ref.node, cube)
+  assert.deepEqual(ref.direction, [0, 0, 1])
+  assert.ok(ref.basis.z)
+  assert.equal(ref.origin, undefined)
+})
+
+test('defaultFrame on a node reads the eager build geometry', () => {
+  const cube = node('primitives.cuboid', 3, { params: { size: [2, 4, 6], center: [1, 2, 3] } })
+  const geometry = raw.primitives.cuboid({ size: [2, 4, 6], center: [1, 2, 3] })
+  globalThis.__jscadBuild = { specials: new WeakMap([[cube, { node: cube, geometry }]]) }
+  try {
+    const f = defaultFrame(cube, [0, 0, 1])
+    close(f.origin, [1, 2, 6])
+    close(f.z, [0, 0, 1])
+    close(f.x, [1, 0, 0])
+  } finally {
+    delete globalThis.__jscadBuild
+  }
+})
+
 const loadModelTree = async () => {
   const specs = []
   if (process.env.JSCAD_MODEL_TREE) specs.push(process.env.JSCAD_MODEL_TREE)
@@ -157,4 +199,45 @@ test('anchored equivalence: tree attach matches eager real-geometry attach', asy
 test('tagged node frames keep their orientation', () => {
   const tagged = withAnchors(node('primitives.cube', 3), { top: frame([0, 0, 1], [0, 0, 1], [1, 0, 0]) })
   frameClose(worldFrames(tagged).top, frame([0, 0, 1], [0, 0, 1], [1, 0, 0]))
+})
+
+// Concrete frames on BOTH sides fold the attach into one transform node. This is
+// the bridge between the eager matrix (checked here against the same assembly
+// built and evaluated through the tree) and the mapped child tag frames.
+test('concrete attach folds into a transform node with mapped frames', async (t) => {
+  const modelTree = await loadModelTree()
+  if (!modelTree) {
+    t.skip('@jscadui/model-tree not resolvable here; set JSCAD_MODEL_TREE to its src/index.js')
+    return
+  }
+  const { createEvaluator } = modelTree
+  const anchors = require('../src').anchors
+
+  const plate = anchors.withAnchors(
+    node('primitives.cuboid', 3, { params: { size: [10, 10, 2] } }),
+    { top: frame([0, 0, 1], [0, 0, 1], [1, 0, 0]) })
+  const cube = anchors.withAnchors(
+    node('primitives.cube', 3, { params: { size: 2 } }),
+    { base: frame([0, 0, -1], [0, 0, 1], [1, 0, 0]) })
+
+  const folded = attach(cube, 'base', plate, 'top', { flip: false })
+  assert.equal(folded.isTreeNode, true)
+  assert.equal(folded.op, 'transforms.transform')
+  assert.equal(folded.children[0], cube)
+  assert.equal(folded.anchors.basis, 'tree')
+  frameClose(folded.anchors.frames.base, frame([0, 0, 1], [0, 0, 1], [1, 0, 0]))
+
+  const realPlate = anchors.withAnchors(
+    raw.primitives.cuboid({ size: [10, 10, 2] }), { top: frame([0, 0, 1], [0, 0, 1], [1, 0, 0]) })
+  const realCube = anchors.withAnchors(
+    raw.primitives.cube({ size: 2 }), { base: frame([0, 0, -1], [0, 0, 1], [1, 0, 0]) })
+  const eager = anchors.attach(realCube, 'base', realPlate, 'top', { flip: false })
+
+  const { solids } = await createEvaluator(raw)(folded, new Map())
+  assert.equal(solids.length, 1)
+  const [emin, emax] = raw.measurements.measureBoundingBox(eager)
+  const [smin, smax] = raw.measurements.measureBoundingBox(solids[0])
+  close(smin, emin)
+  close(smax, emax)
+  close([raw.measurements.measureVolume(solids[0])], [raw.measurements.measureVolume(eager)])
 })

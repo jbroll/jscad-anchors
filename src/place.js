@@ -1,21 +1,13 @@
 'use strict'
 const m = require('./wrap')
 const { anchor } = require('./lookup')
-const { frameFromY, frameToMat4, transformFrame, mapFrames } = require('./frame')
-const { yHint } = require('./defaults')
+const { frameToMat4, transformFrame, mapFrames } = require('./frame')
+const { basisOfDirection } = require('./defaults')
 const { isTreeNode, worldFrames, TREE_BASIS } = require('./storage')
 const { canonicalName, parseDirection } = require('./names')
 
 const { mat4 } = m.maths
 const multiply = (...matrices) => matrices.reduce((a, b) => mat4.multiply(mat4.create(), a, b))
-
-// The descriptor's build-time orientation basis, mirroring the tree's
-// `directionBasis` so a lazy resolve reproduces eager `defaultFrame`.
-const basisOfDirection = (direction) => {
-  if (direction.every((c) => c === 0)) return { z: [0, 0, 1], x: [1, 0, 0] }
-  const f = frameFromY([0, 0, 0], direction, yHint(direction))
-  return { z: f.z, x: f.x }
-}
 
 // Explicit named frame on a node reads the tag; a directional name on a node
 // stays a lazy descriptor. Real geometry keeps the eager lookup by name.
