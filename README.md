@@ -2,12 +2,12 @@
 
 Named frames (anchors) on JSCAD geometry, so parts are placed by attaching one
 part's frame to another's instead of by hand-computed `translate`/`rotate`
-numbers. Works with native [`@jscad/modeling`](https://github.com/jscad/OpenJSCAD.org)
-models, and is intended for [jscad-fluent](https://github.com/jbroll/jscad-fluent)
+numbers. Works with [`@jscad/modeling`](https://github.com/jscad/OpenJSCAD.org)
+models through the `@jbroll/jscad-modeling` fork, and is intended for [jscad-fluent](https://github.com/jbroll/jscad-fluent)
 and the OpenSCAD transpiler in [jscadui](https://github.com/jbroll/jscadui),
 neither of which is integrated yet.
 
-Version 0.1.0.
+Version 0.2.0.
 
 ## Example
 
@@ -37,7 +37,9 @@ hole.
 npm install @jbroll/jscad-anchors
 ```
 
-`@jscad/modeling` (`>=2.12.0 <3`) is a peer dependency.
+`@jscad/modeling` is a peer dependency, aliased to
+[`@jbroll/jscad-modeling`](https://www.npmjs.com/package/@jbroll/jscad-modeling)
+`^2.13.4`, so npm installs that fork under the name this package loads.
 
 ## Docs
 

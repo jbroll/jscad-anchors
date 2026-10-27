@@ -17,7 +17,9 @@ test('re-exports modeling namespaces', () => {
 test('ESM import sees every export by name', async () => {
   const esm = await import('../src/index.js')
   const expected = [...Object.keys(require('@jscad/modeling')), 'anchors', 'default']
-  assert.deepEqual(Object.keys(esm).sort(), expected.sort())
+  // Node 23+ adds 'module.exports' to every CommonJS module's ESM namespace.
+  const names = Object.keys(esm).filter((name) => name !== 'module.exports')
+  assert.deepEqual(names.sort(), expected.sort())
 })
 
 test('anchors is a function with the API as properties', () => {

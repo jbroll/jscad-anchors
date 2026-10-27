@@ -4,8 +4,11 @@
 
 - Node 22. Tests run with `node --test` against glob patterns
   (`test/**/*.test.js`), which Node's test runner resolves natively.
-- `@jscad/modeling` `>=2.12.0 <3` as a peer dependency. This package does not
-  install its own copy; the consumer's `@jscad/modeling` is used.
+- `@jscad/modeling` as a peer dependency, aliased to `@jbroll/jscad-modeling`
+  `^2.13.4` (`npm:@jbroll/jscad-modeling@^2.13.4`). npm installs the fork under
+  the name `@jscad/modeling`, and every package that loads that name shares the
+  one copy. A consumer that pins upstream `@jscad/modeling` itself gets a peer
+  conflict from npm instead of a second copy.
 
 The group table in `src/wrap/groups.js` was verified against modeling
 `fork-main` 2.13.4. To check another installed version, run
@@ -20,11 +23,11 @@ npm install @jbroll/jscad-anchors
 jscadui, jscad-fluent, and jscad-ai-studio use one modeling package:
 `packages/modeling` on the `fork-main` branch of
 [jbroll/OpenJSCAD.org](https://github.com/jbroll/OpenJSCAD.org), published as
-`@jbroll/jscad-modeling`. Consumers link it from a sibling checkout
-(`../OpenJSCAD.org/packages/modeling`) and add npm `overrides` so transitive
-`@jscad/*` dependencies, including this package's peer, resolve to the same
-copy. Two copies would break the `polygons`/`sides` identity checks this
-package relies on.
+`@jbroll/jscad-modeling`. A plain `npm install` gets it through the peer alias.
+To develop against a sibling checkout instead, link it and add npm `overrides`
+so transitive `@jscad/*` dependencies, including this package's peer, resolve
+to the same copy. Two copies would break the `polygons`/`sides` identity checks
+this package relies on.
 
 ```json
 {
