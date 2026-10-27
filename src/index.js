@@ -1,7 +1,8 @@
 'use strict'
 const modeling = require('./wrap')
+const { wrapTree } = modeling
 const { frame } = require('./frame')
-const { withAnchors } = require('./storage')
+const { withAnchors, isTreeNode, TREE_BASIS } = require('./storage')
 const lookup = require('./lookup')
 const { unionAnchored, subtractAnchored, intersectAnchored } = require('./booleans')
 const { attach, alignTo } = require('./place')
@@ -32,5 +33,5 @@ const {
 module.exports = {
   colors, curves, geometries, maths, measurements, primitives, text, utils,
   booleans, expansions, extrusions, hulls, minkowski, modifiers, transforms,
-  anchors
+  anchors, wrapTree, isTreeNode, TREE_BASIS
 }

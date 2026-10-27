@@ -11,6 +11,7 @@ const merge = (target, frames, prefix) => {
 
 const isOptions = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value) &&
+  value?.isTreeNode !== true &&
   basisOf(value) === undefined && !geometries.path2.isA(value)
 
 const unionAnchored = (...geometries) => {
@@ -43,4 +44,4 @@ const intersectAnchored = (...geometries) => {
   return withWorldFrames(result, Object.assign({}, worldFrames(items[0])))
 }
 
-module.exports = { unionAnchored, subtractAnchored, intersectAnchored }
+module.exports = { isOptions, unionAnchored, subtractAnchored, intersectAnchored }
