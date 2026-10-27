@@ -9,13 +9,6 @@ paths only (`booleans.union`, `transforms.translate`), so a model that takes
 these top-level functions from `@jscad/modeling` loses anchors silently in
 the viewer's manifold engine.
 
-## Release
-
-`@jbroll/jscad-anchors` 0.1.0 is not published to npm. `dist/jscad-anchors.cjs`
-is the viewer build, which jsdelivr will serve at
-`@jbroll/jscad-anchors@0/dist/jscad-anchors.cjs`. Publish it before the
-jscadui deploy.
-
 ## 2D manifold paths have no tests
 
 `ManifoldGeom2` support in `src/storage.js` and `src/wrap/index.js` is

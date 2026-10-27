@@ -7,7 +7,7 @@ models through the `@jbroll/jscad-modeling` fork, and is intended for [jscad-flu
 and the OpenSCAD transpiler in [jscadui](https://github.com/jbroll/jscadui),
 neither of which is integrated yet.
 
-Version 0.2.0.
+Version 0.2.1.
 
 ## Example
 
